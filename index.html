@@ -18,7 +18,7 @@
     <script>
         async function init() {
             // replace with your railway url
-            const res = await fetch('https://your-railway-app.up.railway.app/get-qr');
+            const res = await fetch('https://disco-capture-production.up.railway.app/get-qr');
             const data = await res.json();
             document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.qr)}`;
         }
