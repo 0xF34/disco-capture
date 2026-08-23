@@ -17,9 +17,9 @@ let capturedToken = null;
 async function startDiscordSession() {
     console.log("Initializing Discord Session...");
     
-    const browser = await puppeteer.launch({
+        const browser = await puppeteer.launch({
         headless: "new",
-        executablePath: '/usr/bin/chromium', // Required for Railway/Linux
+        // REMOVED: executablePath: '/usr/bin/chromium', 
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
