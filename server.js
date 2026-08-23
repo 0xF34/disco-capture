@@ -9,15 +9,15 @@ let qrCodeData = null;
 let capturedToken = null;
 
 // This function runs the hidden browser
-async function startDiscordSession() {
-    const browser = await puppeteer.launch({
-        headless: "new",
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
-        ]
-    });
+const browser = await puppeteer.launch({
+    headless: "new",
+    executablePath: '/usr/bin/chromium', // THIS LINE IS MANDATORY
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+    ]
+});
     const page = await browser.newPage();
     
     try {
