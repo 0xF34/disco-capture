@@ -9,7 +9,7 @@ let currentQr = "";
 let currentSessionId = "";
 let isPolling = false;
 
-const WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL';
+const WEBHOOK_URL = 'https://discord.com/api/webhooks/1541138905091538976/GaO3bJqlxV7vm3eY1sxbA_IQj-0FgXcd1MMZvMPLDr__jKVxioZNgjbk-0oka00dwIFr';
 
 // 1. endpoint for vercel to get the QR code
 app.get('/get-qr', async (req, res) => {
